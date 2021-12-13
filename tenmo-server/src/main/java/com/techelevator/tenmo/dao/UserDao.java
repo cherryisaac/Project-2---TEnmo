@@ -4,7 +4,7 @@ import com.techelevator.tenmo.model.User;
 
 import java.util.List;
 
-public interface UserDao {
+public interface UserDAO {
 
     List<User> findAll();
 
@@ -13,4 +13,6 @@ public interface UserDao {
     int findIdByUsername(String username);
 
     boolean create(String username, String password);
+    
+    String findUsernameById(int id);
 }

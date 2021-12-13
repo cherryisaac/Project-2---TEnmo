@@ -2,23 +2,28 @@ package com.techelevator.tenmo.controller;
 
 import javax.validation.Valid;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.techelevator.tenmo.dao.UserDao;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.techelevator.tenmo.dao.UserDAO;
 import com.techelevator.tenmo.model.LoginDTO;
 import com.techelevator.tenmo.model.RegisterUserDTO;
 import com.techelevator.tenmo.model.User;
+import com.techelevator.tenmo.model.UserAlreadyExistsException;
+import com.techelevator.tenmo.security.jwt.JWTFilter;
 import com.techelevator.tenmo.security.jwt.TokenProvider;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller to authenticate users.
@@ -28,16 +33,16 @@ public class AuthenticationController {
 
     private final TokenProvider tokenProvider;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
-    private UserDao userDao;
+    private UserDAO userDAO;
 
-    public AuthenticationController(TokenProvider tokenProvider, AuthenticationManagerBuilder authenticationManagerBuilder, UserDao userDao) {
+    public AuthenticationController(TokenProvider tokenProvider, AuthenticationManagerBuilder authenticationManagerBuilder, UserDAO userDAO) {
         this.tokenProvider = tokenProvider;
         this.authenticationManagerBuilder = authenticationManagerBuilder;
-        this.userDao = userDao;
+        this.userDAO = userDAO;
     }
 
     @RequestMapping(value = "/login", method = RequestMethod.POST)
-    public LoginResponse login(@Valid @RequestBody LoginDTO loginDto) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginDTO loginDto) {
 
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword());
@@ -46,16 +51,21 @@ public class AuthenticationController {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.createToken(authentication, false);
         
-        User user = userDao.findByUsername(loginDto.getUsername());
+        User user = userDAO.findByUsername(loginDto.getUsername());
 
-        return new LoginResponse(jwt, user);
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add(JWTFilter.AUTHORIZATION_HEADER, "Bearer " + jwt);
+        return new ResponseEntity<>(new LoginResponse(jwt, user), httpHeaders, HttpStatus.OK);
     }
 
     @ResponseStatus(HttpStatus.CREATED)
     @RequestMapping(value = "/register", method = RequestMethod.POST)
     public void register(@Valid @RequestBody RegisterUserDTO newUser) {
-        if (!userDao.create(newUser.getUsername(), newUser.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User registration failed.");
+        try {
+            User user = userDAO.findByUsername(newUser.getUsername());
+            throw new UserAlreadyExistsException();
+        } catch (UsernameNotFoundException e) {
+            userDAO.create(newUser.getUsername(),newUser.getPassword());
         }
     }
 
@@ -72,7 +82,8 @@ public class AuthenticationController {
             this.user = user;
         }
 
-        public String getToken() {
+        @JsonProperty("token")
+        String getToken() {
             return token;
         }
 
@@ -80,6 +91,7 @@ public class AuthenticationController {
             this.token = token;
         }
 
+        @JsonProperty("user")
 		public User getUser() {
 			return user;
 		}

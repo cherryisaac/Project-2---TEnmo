@@ -15,13 +15,16 @@
     <description>TE Bucks Payment System</description>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <java.version>11</java.version>
+        <java.version>1.8</java.version>
         <jjwt.version>0.11.1</jjwt.version>
     </properties>
 
     <dependencies>
+    	<dependency>
+    		<groupId>junit</groupId>
+    		<artifactId>junit</artifactId>
+    		<scope>test</scope>
+    	</dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jdbc</artifactId>
