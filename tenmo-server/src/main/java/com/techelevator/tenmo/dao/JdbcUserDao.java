@@ -79,6 +79,70 @@ public class JdbcUserDao implements UserDao {
         return true;
     }
 
+    @Override
+    public Double viewBalance(String username) {
+        String sql = "select accounts.balance from accounts " +
+                "join users on accounts.user_id = users.user_id " +
+                "where users.username = ?";
+        SqlRowSet rowSet = jdbcTemplate.queryForRowSet(sql, username);
+        if (rowSet.next()) {
+            return rowSet.getDouble(1);
+        }
+        else throw new UsernameNotFoundException("Can not get balance for " + username);
+    }
+
+
+
+    @Override
+    public Double sendBucks(String senderUserId, Double amount, int recipientUserId) {
+
+        int senderAccountId = getAccountId(senderUserId);
+        int recipientAccountId = getAccountByUserId(recipientUserId);
+        String sqlStarting = "SELECT balance FROM accounts WHERE account_id = ?";
+        SqlRowSet rowset = jdbcTemplate.queryForRowSet(sqlStarting, senderAccountId);
+        Double startingBalance = 0.0;
+        if (rowset.next()){
+            startingBalance = rowset.getDouble(1);
+        }
+        else throw new UsernameNotFoundException("Can not get balance");
+
+        if (startingBalance >= amount) {
+            String sql = "insert into transfers (transfer_type_id, transfer_status_id, account_from, account_to, amount) VALUES (?, ?, ?, ?, ?)";
+            jdbcTemplate.update(sql, 2, 2, senderAccountId, recipientAccountId, amount);
+            String sqlUpdate = "UPDATE accounts SET balance = balance - ? WHERE account_id = ?";
+            jdbcTemplate.update(sqlUpdate, amount, senderAccountId);
+            String sqlUpdate2 = "UPDATE accounts SET balance = balance + ? WHERE account_id = ?";
+            jdbcTemplate.update(sqlUpdate, amount, recipientAccountId);
+            String sqlRemaining = "SELECT balance FROM accounts WHERE account_id = ?";
+            SqlRowSet rowset2 = jdbcTemplate.queryForRowSet(sqlRemaining, senderAccountId);
+            if (rowset2.next()) {
+                return rowset2.getDouble(1);
+            } else throw new UsernameNotFoundException("Can not get balance");
+        }
+        else throw new UsernameNotFoundException("Not enough bucks");
+    }
+
+    private int getAccountId(String username){
+        String sql = "select accounts.account_id from accounts " +
+                "join users on accounts.user_id = users.user_id " +
+                "where users.username = ?";
+        SqlRowSet rowSet = jdbcTemplate.queryForRowSet(sql, username);
+        if (rowSet.next()) {
+            return rowSet.getInt(1);
+        }
+        else throw new UsernameNotFoundException("Can not get account_id for " + username);
+    }
+
+    private int getAccountByUserId(int userId){
+        String sql = "select accounts.account_id from accounts " +
+                "where accounts.user_id = ?";
+        SqlRowSet rowSet = jdbcTemplate.queryForRowSet(sql, userId);
+        if (rowSet.next()) {
+            return rowSet.getInt(1);
+        }
+        else throw new UsernameNotFoundException("Can not get account_id for " + userId);
+    }
+
     private User mapRowToUser(SqlRowSet rs) {
         User user = new User();
         user.setId(rs.getLong("user_id"));

@@ -1,8 +1,10 @@
 package com.techelevator.tenmo.services;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
+import com.techelevator.tenmo.model.*;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -11,16 +13,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
-import com.techelevator.tenmo.models.AuthenticatedUser;
-import com.techelevator.tenmo.models.UserCredentials;
-
 public class AuthenticationService {
 
-    private String BASE_URL;
+    private String baseUrl;
     private RestTemplate restTemplate = new RestTemplate();
 
     public AuthenticationService(String url) {
-        this.BASE_URL = url;
+        this.baseUrl = url;
     }
 
     public AuthenticatedUser login(UserCredentials credentials) throws AuthenticationServiceException {
@@ -42,7 +41,7 @@ public class AuthenticationService {
 
 	private AuthenticatedUser sendLoginRequest(HttpEntity<UserCredentials> entity) throws AuthenticationServiceException {
 		try {	
-			ResponseEntity<AuthenticatedUser> response = restTemplate.exchange(BASE_URL + "login", HttpMethod.POST, entity, AuthenticatedUser.class);
+			ResponseEntity<AuthenticatedUser> response = restTemplate.exchange(baseUrl + "login", HttpMethod.POST, entity, AuthenticatedUser.class);
 			return response.getBody(); 
 		} catch(RestClientResponseException ex) {
 			String message = createLoginExceptionMessage(ex);
@@ -52,7 +51,7 @@ public class AuthenticationService {
 
     private ResponseEntity<Map> sendRegistrationRequest(HttpEntity<UserCredentials> entity) throws AuthenticationServiceException {
     	try {
-			return restTemplate.exchange(BASE_URL + "register", HttpMethod.POST, entity, Map.class);
+			return restTemplate.exchange(baseUrl + "register", HttpMethod.POST, entity, Map.class);
 		} catch(RestClientResponseException ex) {
 			String message = createRegisterExceptionMessage(ex);
 			throw new AuthenticationServiceException(message);
@@ -79,5 +78,39 @@ public class AuthenticationService {
 		    message = ex.getRawStatusCode() + " : " + ex.getResponseBodyAsString();
 		}
 		return message;
+	}
+
+	private HttpEntity<Token> createRequestEntity(Token token) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		HttpEntity<Token> entity = new HttpEntity<>(token, headers);
+		return entity;
+	}
+
+	private Balance sendViewBalanceRequest(HttpEntity<Token> entity) throws AuthenticationServiceException {
+		try {
+			ResponseEntity<Balance> response = restTemplate.exchange(baseUrl + "viewBalance", HttpMethod.POST, entity, Balance.class);
+			return response.getBody();
+		} catch(RestClientResponseException ex) {
+			String message = createLoginExceptionMessage(ex);
+			throw new AuthenticationServiceException(message);
+		}
+	}
+
+	public Double viewBalance(String token) throws AuthenticationServiceException {
+		Token tokenObj = new Token();
+		tokenObj.setToken(token);
+		HttpEntity<Token> entity = createRequestEntity(tokenObj);
+		return sendViewBalanceRequest(entity).getBalance();
+	}
+
+	public List<User> findAllUsers() throws AuthenticationServiceException {
+		try {
+			ResponseEntity<Balance> response = restTemplate.exchange(baseUrl + "findAllUsers", HttpMethod.GET, null, List<User>.class);
+			return response.getBody();
+		} catch(RestClientResponseException ex) {
+			String message = createLoginExceptionMessage(ex);
+			throw new AuthenticationServiceException(message);
+		}
 	}
 }
