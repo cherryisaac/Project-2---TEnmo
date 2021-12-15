@@ -106,11 +106,53 @@ public class AuthenticationService {
 
 	public List<User> findAllUsers() throws AuthenticationServiceException {
 		try {
-			ResponseEntity<Balance> response = restTemplate.exchange(baseUrl + "findAllUsers", HttpMethod.GET, null, List<User>.class);
-			return response.getBody();
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+			HttpEntity<User> entity = new HttpEntity<>(headers);
+			ResponseEntity<AllUsers> response = restTemplate.exchange(baseUrl + "findAllUsers", HttpMethod.GET, entity, AllUsers.class);
+			return response.getBody().getAllUsers();
 		} catch(RestClientResponseException ex) {
 			String message = createLoginExceptionMessage(ex);
 			throw new AuthenticationServiceException(message);
 		}
 	}
+
+	public Double sendBucks(String token, int recipientId, Double amount) throws AuthenticationServiceException{
+		Transfer transfer = new Transfer(token, recipientId, amount);
+		try {
+			ResponseEntity<Balance> response = restTemplate.exchange(baseUrl + "sendBucks", HttpMethod.POST, createRequestEntity(transfer), Balance.class);
+			return response.getBody().getBalance();
+		} catch(RestClientResponseException ex) {
+			String message = createLoginExceptionMessage(ex);
+			throw new AuthenticationServiceException(message);
+		}
+	}
+
+	private HttpEntity<Transfer> createRequestEntity(Transfer transfer) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		HttpEntity<Transfer> entity = new HttpEntity<>(transfer, headers);
+		return entity;
+	}
+
+	public List<TransferDetail> transfers(String token) throws AuthenticationServiceException{
+		Token token1 = new Token();
+		token1.setToken(token);
+		try {
+			ResponseEntity<TransferHistory> response = restTemplate.exchange(baseUrl + "viewPastTransfers", HttpMethod.POST, createRequestEntity(token1), TransferHistory.class);
+			return response.getBody().getTransfers();
+		} catch(RestClientResponseException ex) {
+			String message = createLoginExceptionMessage(ex);
+			throw new AuthenticationServiceException(message);
+		}
+	}
+
+	private HttpEntity<Void> makeAuthEntity() {
+		AuthenticatedUser currentUser = new AuthenticatedUser();
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(currentUser.getToken());
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		return new HttpEntity<>(headers);
+	}
+
 }

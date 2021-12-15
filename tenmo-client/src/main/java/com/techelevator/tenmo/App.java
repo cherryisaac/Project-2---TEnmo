@@ -1,10 +1,11 @@
 package com.techelevator.tenmo;
 
-import com.techelevator.tenmo.model.AuthenticatedUser;
-import com.techelevator.tenmo.model.UserCredentials;
+import com.techelevator.tenmo.model.*;
 import com.techelevator.tenmo.services.AuthenticationService;
 import com.techelevator.tenmo.services.AuthenticationServiceException;
 import com.techelevator.view.ConsoleService;
+
+import java.util.List;
 
 public class App {
 
@@ -79,7 +80,15 @@ private static final String API_BASE_URL = "http://localhost:8080/";
 
 	private void viewTransferHistory() {
 		// TODO Auto-generated method stub
-		
+		try {
+			List<TransferDetail> transferDetails = authenticationService.transfers(currentUser.getToken());
+			for (TransferDetail details : transferDetails){
+				System.out.println("Transfer ID: " + details.getTransfer_id() + " From: " + details.getAccount_from() + " To: "
+						+ details.getAccount_to() + " Amount: " + details.getAmount() + " Type: " + details.getTransfer_type() + " Status: " + details.getTransfer_status());
+			}
+		} catch (AuthenticationServiceException e) {
+			System.out.println("View Transfer Error " + e.getMessage());
+		}
 	}
 
 	private void viewPendingRequests() {
@@ -89,7 +98,24 @@ private static final String API_BASE_URL = "http://localhost:8080/";
 
 	private void sendBucks() {
 		// TODO Auto-generated method stub
-		
+		try {
+			List<User> users = authenticationService.findAllUsers();
+			System.out.println("List of users: ");
+			for (User user : users) {
+				System.out.println(user.getUsername() + ", " + user.getId());
+			}
+		} catch (AuthenticationServiceException e) {
+			System.out.println("View Balance Error " + e.getMessage());
+		}
+
+		int recipientId = console.getUserInputInteger("Enter User ID to transfer bucks to");
+		Double amount = Double.parseDouble(console.getUserInput("Enter amount to transfer bucks to"));
+		try {
+			Double balance = authenticationService.sendBucks(currentUser.getToken(), recipientId, amount);
+			System.out.print("Bucks left: " + balance);
+		} catch (AuthenticationServiceException e) {
+			System.out.println("View Balance Error " + e.getMessage());
+		}
 	}
 
 	private void requestBucks() {

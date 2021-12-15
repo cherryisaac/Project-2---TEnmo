@@ -1,6 +1,8 @@
 package com.techelevator.tenmo.dao;
 
+import com.techelevator.tenmo.model.Transfer;
 import com.techelevator.tenmo.model.User;
+import com.techelevator.tenmo.model.ViewTransferDTO;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -91,8 +93,6 @@ public class JdbcUserDao implements UserDao {
         else throw new UsernameNotFoundException("Can not get balance for " + username);
     }
 
-
-
     @Override
     public Double sendBucks(String senderUserId, Double amount, int recipientUserId) {
 
@@ -104,22 +104,22 @@ public class JdbcUserDao implements UserDao {
         if (rowset.next()){
             startingBalance = rowset.getDouble(1);
         }
-        else throw new UsernameNotFoundException("Can not get balance");
+        else throw new NullPointerException("Not enough bucks, can not send bucks to yourself, or recipient ID may be invalid.");
 
-        if (startingBalance >= amount) {
+        if (startingBalance >= amount && senderAccountId != recipientAccountId ) {
             String sql = "insert into transfers (transfer_type_id, transfer_status_id, account_from, account_to, amount) VALUES (?, ?, ?, ?, ?)";
             jdbcTemplate.update(sql, 2, 2, senderAccountId, recipientAccountId, amount);
             String sqlUpdate = "UPDATE accounts SET balance = balance - ? WHERE account_id = ?";
             jdbcTemplate.update(sqlUpdate, amount, senderAccountId);
             String sqlUpdate2 = "UPDATE accounts SET balance = balance + ? WHERE account_id = ?";
-            jdbcTemplate.update(sqlUpdate, amount, recipientAccountId);
+            jdbcTemplate.update(sqlUpdate2, amount, recipientAccountId);
             String sqlRemaining = "SELECT balance FROM accounts WHERE account_id = ?";
             SqlRowSet rowset2 = jdbcTemplate.queryForRowSet(sqlRemaining, senderAccountId);
             if (rowset2.next()) {
                 return rowset2.getDouble(1);
-            } else throw new UsernameNotFoundException("Can not get balance");
+            } else throw new NullPointerException("Not enough bucks, can not send bucks to yourself, or recipient ID may be invalid.");
         }
-        else throw new UsernameNotFoundException("Not enough bucks");
+        else throw new NullPointerException("Not enough bucks, can not send bucks to yourself, or recipient ID may be invalid.");
     }
 
     private int getAccountId(String username){
@@ -141,6 +141,29 @@ public class JdbcUserDao implements UserDao {
             return rowSet.getInt(1);
         }
         else throw new UsernameNotFoundException("Can not get account_id for " + userId);
+    }
+
+    public List<Transfer> viewTransfer(String username){
+        int accountId = getAccountId(username);
+        String sql = "select transfer_types.transfer_type_desc, transfer_statuses.transfer_status_desc, transfers.transfer_id, transfers.account_from, transfers.account_to, transfers.amount " +
+        "from transfers " +
+        "join transfer_types on transfers.transfer_type_id = transfer_types.transfer_type_id " +
+        "join transfer_statuses on transfers.transfer_status_id = transfer_statuses.transfer_status_id " +
+                "where account_from = ? or account_to = ?";
+
+        SqlRowSet rowset = jdbcTemplate.queryForRowSet(sql, accountId, accountId);
+        List<Transfer> transfer = new ArrayList<>();
+        while (rowset.next()){
+            Transfer transfer1 = new Transfer();
+            transfer1.setTransfer_type(rowset.getString(1));
+            transfer1.setTransfer_status(rowset.getString(2));
+            transfer1.setTransfer_id(rowset.getInt(3));
+            transfer1.setAccount_from(rowset.getInt(4));
+            transfer1.setAccount_to(rowset.getInt(5));
+            transfer1.setAmount(rowset.getDouble(6));
+            transfer.add(transfer1);
+        }
+        return transfer;
     }
 
     private User mapRowToUser(SqlRowSet rs) {

@@ -73,7 +73,22 @@ public class AuthenticationController {
 
     @RequestMapping(value = "/findAllUsers", method = RequestMethod.GET)
     public findAllUsersResponse findAllUsers(){
-        return new findAllUsersResponse(userDao.findAll());
+        List<SimpleUser> users = new ArrayList<>();
+        for (User user : userDao.findAll()){
+            SimpleUser simpleUser = new SimpleUser();
+            simpleUser.setUsername(user.getUsername());
+            simpleUser.setId((int)user.getId().longValue());
+            users.add(simpleUser);
+            }
+        return new findAllUsersResponse(users);
+    }
+
+    @RequestMapping(value = "/viewPastTransfers", method = RequestMethod.POST)
+    public viewPastTransfersResponse viewPastTransfers(@Valid @RequestBody ViewTransferDTO transferDTO){
+        UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken)tokenProvider.getAuthentication(transferDTO.getToken());
+        List<Transfer> transfer = userDao.viewTransfer(auth.getName());
+        viewPastTransfersResponse view = new viewPastTransfersResponse(transfer);
+        return view;
     }
 
 
@@ -125,35 +140,50 @@ public class AuthenticationController {
     }
 
     static class sendBucksResponse {
-        private Double amount;
+        private Double balance;
 
-        sendBucksResponse(Double amount){
-            this.amount = amount;
+        sendBucksResponse(Double balance){
+            this.balance = balance;
         }
 
-        public Double getAmount() {
-            return amount;
+        public Double getBalance() {
+            return balance;
         }
 
-        public void setAmount(Double amount) {
-            this.amount = amount;
+        public void setBalance(Double balance) {
+            this.balance = balance;
         }
     }
 
     static class findAllUsersResponse{
-        private List<User> users;
+        private List<SimpleUser> users;
 
-        findAllUsersResponse(List<User> users){
+        findAllUsersResponse(List<SimpleUser> users){
             this.users = users;
         }
 
-        public List<User> getUsers() {
+        public List<SimpleUser> getUsers() {
             return users;
         }
 
-        public void setUsers(List<User> users) {
+        public void setUsers(List<SimpleUser> users) {
             this.users = users;
         }
     }
-}
 
+    static class viewPastTransfersResponse{
+        private List<Transfer> transfers;
+
+        viewPastTransfersResponse(List<Transfer> transfers){
+            this.transfers = transfers;
+        }
+
+        public List<Transfer> getTransfers() {
+            return transfers;
+        }
+
+        public void setTransfers(List<Transfer> transfers) {
+            this.transfers = transfers;
+        }
+    }
+}

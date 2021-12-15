@@ -1,6 +1,8 @@
 package com.techelevator.tenmo.dao;
 
+import com.techelevator.tenmo.model.Transfer;
 import com.techelevator.tenmo.model.User;
+import com.techelevator.tenmo.model.ViewTransferDTO;
 
 import java.util.List;
 
@@ -18,6 +20,5 @@ public interface UserDao {
 
     Double sendBucks(String senderUserId, Double amount, int recipientUserId);
 
-
-
+    List<Transfer> viewTransfer(String username);
 }
